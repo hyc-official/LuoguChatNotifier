@@ -68,7 +68,9 @@ function chatnotify(uid, cid) {
             console.log("Received server broadcast");
             if (data.message) {
                 console.log("Message from", data.message.sender.uid, data.message.sender.name);
-                notify(data.message);
+                if (data.message.sender.uid.toString() !== uid) {
+                    notify(data.message);
+                }
             } else {
                 console.log("Cannot parse as message");
             }
