@@ -32,7 +32,7 @@ async function notify(msg) {
         {
             title: `来自 ${msg.sender.name} 的洛谷私信`,
             message: msg.content,
-            icon: path.join(__dirname, `cache/${uid}.png`),
+            icon: path.join(process.cwd(), `cache/${uid}.png`),
             sound: true,
             wait: true,
         },
