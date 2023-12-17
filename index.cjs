@@ -58,6 +58,12 @@ function chatnotify(uid, cid) {
         if (data._ws_type === "join_result") {
             if (data.result === "success") {
                 console.log("Connected, channel join success");
+                notifier.notify({
+                    title: "已经开始监听洛谷私信",
+                    message: "当收到私信时，会发送提示",
+                    sound: true,
+                    wait: true,
+                });
             } else {
                 console.log("Connected, channel join fail:", data.result);
                 process.exit();
