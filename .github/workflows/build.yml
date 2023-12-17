@@ -1,0 +1,38 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+permissions: 
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Use Node.js 16
+        uses: actions/setup-node@v4.0.0
+        with: 
+          node-version: '16'
+      - name: Install dependencies
+        run: npm install
+      - name: Build executable
+        run: |
+          npx pkg index.cjs --out-path dist
+      - name: Copy dependencies
+        run: |
+          mkdir dist/notifier
+          cp node_modules/node-notifier/vendor/notifu/notifu.exe dist/notifier/notifu.exe
+          cp node_modules/node-notifier/vendor/notifu/notifu64.exe dist/notifier/notifu64.exe
+          cp node_modules/node-notifier/vendor/mac.noindex/terminal-notifier.app/Contents/MacOS/terminal-notifier dist/notifier/terminal-notifier
+          cp node_modules/node-notifier/vendor/snoreToast/snoretoast-x86.exe dist/notifier/snoretoast-x86.exe
+          cp node_modules/node-notifier/vendor/snoreToast/snoretoast-x64.exe dist/notifier/snoretoast-x64.exe
+          cp node_modules/opn/xdg-open dist/xdg-open
+      - name: Deploy dist
+        uses: JamesIves/github-pages-deploy-action@v4
+        with: 
+          folder: dist
+          branch: dist
+          git-config-name: github-actions[bot]
+          git-config-email: 41898282+github-actions[bot]@users.noreply.github.com
