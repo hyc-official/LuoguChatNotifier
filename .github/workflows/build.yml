@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - master
+    paths:
+      - '**.cjs'
+      - '**.js'
+      - 'package.json'
+      - '.github/workflows/build.yml'
 permissions: 
   contents: write
 jobs:
