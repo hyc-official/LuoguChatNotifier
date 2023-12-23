@@ -7,9 +7,6 @@ const dl = require("download");
 const opn = require("opn");
 
 const rli = rl.createInterface({input: process.stdin, output: process.stdout});
-rli.on("close", () => {
-    process.exit();
-});
 
 let cache = {};
 if (fs.existsSync("cache/cache.json")) {
@@ -28,6 +25,7 @@ async function notify(msg) {
         cache[uid] = new Date().getTime();
         fs.writeFileSync("cache/cache.json", JSON.stringify(cache));
     }
+    console.log("Send notification");
     notifier.notify(
         {
             title: `来自 ${msg.sender.name} 的洛谷私信`,
@@ -38,6 +36,7 @@ async function notify(msg) {
         },
         (er, rp, md) => {
             if (!er) {
+                console.log("Notification callback", rp, md);
                 if (rp === "activate" && md.activationType === "clicked") {
                     opn(`https://www.luogu.com.cn/chat?uid=${uid}`);
                 }
@@ -47,7 +46,16 @@ async function notify(msg) {
         }
     );
 }
-function chatnotify(uid, cid) {
+
+var lastmsg = 0;
+function chatnotify(uid, cid, fst = true) {
+    if (fst) {
+        console.log("Connecting to server");
+    } else {
+        console.log("Reconnecting");
+    }
+    console.log("Connect info: uid", uid);
+    console.log("Connect info: cid", cid);
     const ws = new WebSocket("wss://ws.luogu.com.cn/ws", {
         headers: {
             "Cookie": `__client_id=${cid}; _uid=${uid}`,
@@ -58,15 +66,17 @@ function chatnotify(uid, cid) {
         if (data._ws_type === "join_result") {
             if (data.result === "success") {
                 console.log("Connected, channel join success");
-                notifier.notify({
-                    title: "已经开始监听洛谷私信",
-                    message: "当收到私信时，会发送提示",
-                    sound: true,
-                    wait: true,
-                });
+                if (fst) {
+                    notifier.notify({
+                        title: "已经开始监听洛谷私信",
+                        message: "当收到私信时，会发送提示",
+                        sound: true,
+                        wait: true,
+                    });
+                }
             } else {
-                console.log("Connected, channel join fail:", data.result);
-                process.exit();
+                console.log("Connected, channel join fail", data.result);
+                ws.close();
             }
         } else if (data._ws_type === "heartbeat") {
             console.log("Received heartbeat");
@@ -78,11 +88,20 @@ function chatnotify(uid, cid) {
                     notify(data.message);
                 }
             } else {
-                console.log("Cannot parse as message");
+                console.log("Broadcast cannot parse as message", data);
             }
         } else {
-            console.log("Received data, but cannot parse:", data);
+            console.log("Received unknown data", data);
         }
+        lastmsg = new Date().getTime();
+        console.log("Message time", lastmsg);
+        setTimeout(() => {
+            if ((new Date().getTime()) - lastmsg >= 100000) {
+                console.log("No message for 100s, closing connection to retry");
+                ws.close();
+                chatnotify(uid, cid, false);
+            }
+        }, 101000);
     });
     ws.on("open", () => {
         ws.send(JSON.stringify({
@@ -92,9 +111,12 @@ function chatnotify(uid, cid) {
             exclusive_key: null,
         }));
     });
-    ws.on("close", () => {
-        console.log("Connection closed");
-        process.exit();
+    ws.on("close", (code, reason) => {
+        console.log("Connection closed", code, reason.toString());
+        chatnotify(uid, cid, false);
+    });
+    ws.on("error", (err) => {
+        console.log("ERROR", err.message);
     });
 }
 
@@ -103,6 +125,7 @@ rli.question("Input Luogu UID: ", (data) => {
     uid = data;
     rli.question("Input Luogu cookie __client_id: ", (data) => {
         cid = data;
+        rli.close();
         chatnotify(uid, cid);
     });
 });
